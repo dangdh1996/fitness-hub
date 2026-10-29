@@ -1,0 +1,68 @@
+name: Sync verified product prices
+
+on:
+  schedule:
+    # 19:00 UTC = 02:00 the following day in Asia/Ho_Chi_Minh.
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Write validated observations to Supabase
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verified-product-price-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check required inputs
+        id: ready
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          APPLY_REQUESTED: ${{ inputs.apply }}
+        run: |
+          if [[ ! -f data/product-feed.json ]]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo '### Price sync skipped' >> "$GITHUB_STEP_SUMMARY"
+            echo 'A current verified data/product-feed.json export is required. No prices were updated.' >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$EVENT_NAME" == 'schedule' || "$APPLY_REQUESTED" == 'true' ]] && [[ -z "$SUPABASE_URL" || -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo '### Price sync skipped' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Backend Supabase secrets are missing. No prices were updated.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate the complete feed
+        if: steps.ready.outputs.ready == 'true'
+        run: node scripts/sync-prices.mjs --dry-run
+      - name: Apply verified observations
+        if: steps.ready.outputs.ready == 'true' && (github.event_name == 'schedule' || inputs.apply == true)
+        run: node scripts/sync-prices.mjs --apply
+      - name: Record outcome
+        if: success() && steps.ready.outputs.ready == 'true'
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          APPLY_REQUESTED: ${{ inputs.apply }}
+        shell: bash
+        run: |
+          if [[ "$EVENT_NAME" == 'schedule' || "$APPLY_REQUESTED" == 'true' ]]; then
+            echo 'Validated feed applied; product upserts confirmed by Supabase.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Dry run passed. Database unchanged.' >> "$GITHUB_STEP_SUMMARY"
+          fi

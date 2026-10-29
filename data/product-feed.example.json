@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "is_sample": true,
+  "source": {
+    "kind": "affiliate_export",
+    "reference": "REPLACE_WITH_THE_EXPORT_OR_APPROVED_API_REFERENCE"
+  },
+  "products": []
+}

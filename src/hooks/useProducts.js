@@ -1,52 +1,42 @@
 import { useEffect, useState } from 'react';
 import { fallbackProducts } from '../data/fallbackProducts';
 import { supabase } from '../lib/supabase';
+import { loadCatalog } from '../lib/catalog';
 
 export function useProducts(category) {
-  const [products, setProducts] = useState(fallbackProducts[category]);
-  const [source, setSource] = useState('sample');
-  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState({ category, products: fallbackProducts[category], source: 'sample', loading: Boolean(supabase), reason: 'unconfigured' });
 
   useEffect(() => {
     let active = true;
-    setProducts(fallbackProducts[category]);
+    const controller = new AbortController();
+    const fallback = (reason) => ({ category, products: fallbackProducts[category], source: 'sample', loading: false, reason });
 
     if (!supabase) {
-      setSource('sample');
+      setState(fallback('unconfigured'));
       return () => { active = false; };
     }
 
-    setLoading(true);
-    supabase
-      .from('products')
-      .select('slug,name,brand,category,price_vnd,active_total_g,cost_per_active_gram,badge,affiliate_url,last_checked_at')
-      .eq('category', category)
-      .eq('is_active', true)
-      .order('cost_per_active_gram', { ascending: true })
-      .then(({ data, error }) => {
+    setState({ ...fallback(null), loading: true });
+    const timer = setTimeout(() => {
+      controller.abort();
+      if (active) setState(fallback('unavailable'));
+    }, 10_000);
+    loadCatalog(supabase, category, controller.signal)
+      .then((products) => {
         if (!active) return;
-        if (error || !data?.length) {
-          setSource('sample');
-          return;
-        }
-        setProducts(data.map((product) => ({
-          slug: product.slug,
-          name: product.name,
-          brand: product.brand,
-          category: product.category,
-          price: product.price_vnd,
-          activeTotal: Number(product.active_total_g),
-          costPerGram: Number(product.cost_per_active_gram),
-          badge: product.badge,
-          url: product.affiliate_url,
-          lastCheckedAt: product.last_checked_at,
-        })));
-        setSource('supabase');
+        setState(products.length
+          ? { category, products, source: 'verified', loading: false, reason: null }
+          : fallback('empty'));
       })
-      .finally(() => active && setLoading(false));
+      .catch(() => active && setState(fallback('unavailable')))
+      .finally(() => clearTimeout(timer));
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [category]);
 
-  return { products, source, loading };
+  return state.category === category ? state : { category, products: fallbackProducts[category], source: 'sample', loading: Boolean(supabase), reason: null };
 }
