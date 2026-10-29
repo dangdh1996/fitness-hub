@@ -1,143 +1,137 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+
+const products = {
+  creatine: [
+    { name: 'Ostrovit Micronized Creatine 500g', price: 450000, costPerGram: 900, badge: '🥇 Rẻ nhất', url: 'https://s.shopee.vn/sub_id=creatine_ostrovit' },
+    { name: 'Rule 1 Creatine Monohydrate 435g', price: 520000, costPerGram: 1195, badge: '🥈 Bán chạy', url: 'https://s.shopee.vn/sub_id=creatine_rule1' },
+    { name: 'NutraBio Pure Creatine 300g', price: 410000, costPerGram: 1366, badge: '🥉 Cao cấp', url: 'https://s.shopee.vn/sub_id=creatine_nutrabio' },
+  ],
+  whey: [
+    { name: 'Whey Protein Isolate Avacore 2kg', price: 1650000, costPerGram: 925, badge: '🥇 Tối ưu nhất', url: 'https://s.shopee.vn/sub_id=whey_avacore' },
+    { name: 'Rule 1 Proteins Isolate 5lbs', price: 1850000, costPerGram: 961, badge: '🥈 Phổ biến', url: 'https://s.shopee.vn/sub_id=whey_rule1' },
+  ],
+};
+
+const activityLevels = [
+  { value: 1.2, label: 'Ít vận động' },
+  { value: 1.375, label: 'Tập nhẹ 1–3 buổi/tuần' },
+  { value: 1.55, label: 'Tập vừa 3–5 buổi/tuần' },
+  { value: 1.725, label: 'Tập nặng 6–7 buổi/tuần' },
+  { value: 1.9, label: 'Vận động viên / lao động nặng' },
+];
+
+const goals = {
+  cut: { label: 'Giảm mỡ', adjustment: -400 },
+  maintain: { label: 'Giữ cân', adjustment: 0 },
+  gain: { label: 'Tăng cơ', adjustment: 300 },
+};
+
+const formatNumber = (value) => new Intl.NumberFormat('vi-VN').format(value);
+
+function NumberField({ id, label, value, min, max, onChange, suffix }) {
+  return (
+    <label htmlFor={id} className="space-y-1.5">
+      <span className="block text-xs font-medium text-gray-400">{label}</span>
+      <div className="relative">
+        <input id={id} type="number" min={min} max={max} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-gray-800 bg-gray-950 p-3 pr-10 text-sm font-semibold text-white outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10" />
+        <span className="pointer-events-none absolute right-3 top-3 text-xs text-gray-600">{suffix}</span>
+      </div>
+    </label>
+  );
+}
 
 export default function FitnessAffiliateHub() {
-  const [weight, setWeight] = useState(70);
+  const [weight, setWeight] = useState('70');
+  const [height, setHeight] = useState('170');
+  const [age, setAge] = useState('28');
+  const [sex, setSex] = useState('male');
+  const [activity, setActivity] = useState('1.55');
+  const [goal, setGoal] = useState('maintain');
   const [category, setCategory] = useState('creatine');
 
-  // Dữ liệu mẫu minh họa sản phẩm (Sau này sẽ được bot tự động đồng bộ từ Supabase)
-  const productDatabase = {
-    creatine: [
-      { name: "Ostrovit Micronized Creatine 500g", price: 450000, servings: 100, active_g: 5, cost_per_gram: 900, badge: "🥇 Rẻ nhất", url: "https://s.shopee.vn/sub_id=creatine_ostrovit" },
-      { name: "Rule 1 Creatine Monohydrate 435g", price: 520000, servings: 75, active_g: 5.8, cost_per_gram: 1195, badge: "🥈 Bán chạy", url: "https://s.shopee.vn/sub_id=creatine_rule1" },
-      { name: "NutraBio Pure Creatine 300g", price: 410000, servings: 60, active_g: 5, cost_per_gram: 1366, badge: "🥉 Cao cấp", url: "https://s.shopee.vn/sub_id=creatine_nutrabio" }
-    ],
-    whey: [
-      { name: "Whey Protein Isolate Avacore 2kg", price: 1650000, servings: 66, active_g: 27, cost_per_gram: 925, badge: "🥇 Tối ưu nhất", url: "https://s.shopee.vn/sub_id=whey_avacore" },
-      { name: "Rule 1 Proteins Isolate 5lbs", price: 1850000, servings: 77, active_g: 25, cost_per_gram: 961, badge: "🥈 Phổ biến", url: "https://s.shopee.vn/sub_id=whey_rule1" }
-    ]
-  };
+  const metrics = useMemo(() => {
+    const safeWeight = Math.min(300, Math.max(30, Number(weight) || 0));
+    const safeHeight = Math.min(250, Math.max(120, Number(height) || 0));
+    const safeAge = Math.min(100, Math.max(14, Number(age) || 0));
+    const bmr = 10 * safeWeight + 6.25 * safeHeight - 5 * safeAge + (sex === 'male' ? 5 : -161);
+    const tdee = Math.round(bmr * Number(activity));
+    return {
+      weight: safeWeight,
+      bmr: Math.round(bmr),
+      tdee,
+      calorieTarget: Math.max(1200, tdee + goals[goal].adjustment),
+      proteinMin: Math.round(safeWeight * 1.6),
+      proteinMax: Math.round(safeWeight * 2.2),
+      creatine: Math.min(5, Math.max(3, Math.round(safeWeight * 0.07 * 10) / 10)),
+    };
+  }, [activity, age, goal, height, sex, weight]);
 
-  const currentProducts = productDatabase[category] || [];
-  const recommendedCreatine = Math.round(weight * 0.07 * 10) / 10; // Công thức ước tính nhanh
+  const recommendation = category === 'creatine'
+    ? `${metrics.creatine}g creatine/ngày`
+    : `${metrics.proteinMin}–${metrics.proteinMax}g protein/ngày`;
 
   return (
-    <main className="min-h-screen bg-gray-950 text-gray-100 font-sans p-4 sm:p-8 flex flex-col items-center">
-      <div className="max-w-3xl w-full space-y-6">
-        
-        {/* Header */}
-        <header className="text-center space-y-2 py-4 border-b border-gray-800">
-          <span className="bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/20">
-            ⚡ Trạm Định lượng Tự động Realtime
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mt-2">
-            So sánh Giá & Tối ưu Chi phí Thực phẩm Bổ sung
-          </h1>
-          <p className="text-sm text-gray-400 max-w-xl mx-auto">
-            Không mua hàng bằng cảm tính. Hệ thống tự động tính toán chi phí thực tế trên từng gram hoạt chất nguyên chất.
-          </p>
+    <main className="min-h-screen bg-gray-950 px-4 py-6 font-sans text-gray-100 sm:px-8 sm:py-10">
+      <div className="mx-auto w-full max-w-5xl space-y-6">
+        <header className="space-y-3 border-b border-gray-800 pb-6 text-center">
+          <span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">⚡ Trạm định lượng thể hình</span>
+          <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Ăn đúng lượng. Mua đúng giá.</h1>
+          <p className="mx-auto max-w-2xl text-sm leading-6 text-gray-400 sm:text-base">Tính TDEE, mục tiêu calories và nhu cầu bổ sung theo thể trạng; sau đó so sánh chi phí thật trên mỗi gram hoạt chất.</p>
         </header>
 
-        {/* Khung tương tác: Máy tính nhu cầu */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4">
-          <h2 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-            🧮 Máy tính nhu cầu cá nhân
-          </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+          <div className="space-y-5 rounded-2xl border border-gray-800 bg-gray-900 p-5 shadow-2xl sm:p-6">
             <div>
-              <label className="text-xs text-gray-400 block mb-1 font-medium">Cân nặng hiện tại của bạn (kg):</label>
-              <input 
-                type="number" 
-                value={weight} 
-                onChange={(e) => setWeight(e.target.value)}
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl p-3 text-sm focus:outline-none focus:border-emerald-500 text-white font-semibold" 
-              />
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Máy tính TDEE</p>
+              <h2 className="mt-1 text-xl font-bold text-white">Chỉ số cơ thể của bạn</h2>
             </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1 font-medium">Danh mục sản phẩm:</label>
-              <select 
-                value={category} 
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-gray-950 border border-gray-800 rounded-xl p-3 text-sm focus:outline-none focus:border-emerald-500 text-white font-semibold"
-              >
-                <option value="creatine">Creatine Monohydrate</option>
-                <option value="whey">Whey Protein Isolate</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <NumberField id="weight" label="Cân nặng" value={weight} min="30" max="300" suffix="kg" onChange={setWeight} />
+              <NumberField id="height" label="Chiều cao" value={height} min="120" max="250" suffix="cm" onChange={setHeight} />
+              <NumberField id="age" label="Tuổi" value={age} min="14" max="100" suffix="tuổi" onChange={setAge} />
             </div>
-          </div>
-
-          <div className="bg-emerald-950/30 border border-emerald-900/50 rounded-xl p-4 text-xs sm:text-sm text-emerald-300 flex items-start gap-3">
-            <span className="text-lg">🎯</span>
-            <div>
-              <strong className="block text-emerald-200 mb-0.5">Khuyến nghị từ hệ thống định lượng:</strong>
-              Với trọng lượng <span className="underline font-bold">{weight} kg</span>, mức khuyến nghị tối ưu khoảng <span className="font-bold text-white">{recommendedCreatine}g hoạt chất/ngày</span>. Hãy chọn sản phẩm có chi phí trên mỗi gram rẻ nhất bên dưới để tối ưu ví tiền của bạn.
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label htmlFor="sex" className="space-y-1.5">
+                <span className="block text-xs font-medium text-gray-400">Giới tính sinh học</span>
+                <select id="sex" value={sex} onChange={(event) => setSex(event.target.value)} className="w-full rounded-xl border border-gray-800 bg-gray-950 p-3 text-sm font-semibold text-white outline-none focus:border-emerald-500"><option value="male">Nam</option><option value="female">Nữ</option></select>
+              </label>
+              <label htmlFor="activity" className="space-y-1.5">
+                <span className="block text-xs font-medium text-gray-400">Mức vận động</span>
+                <select id="activity" value={activity} onChange={(event) => setActivity(event.target.value)} className="w-full rounded-xl border border-gray-800 bg-gray-950 p-3 text-sm font-semibold text-white outline-none focus:border-emerald-500">{activityLevels.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}</select>
+              </label>
             </div>
-          </div>
-        </div>
-
-        {/* Bảng xếp hạng giá Affiliate */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider">
-              📊 Bảng xếp hạng giá tốt nhất hôm nay
-            </h2>
-            <span className="text-xs text-gray-500">Cập nhật tự động</span>
+            <fieldset>
+              <legend className="mb-2 text-xs font-medium text-gray-400">Mục tiêu</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.entries(goals).map(([key, item]) => <button key={key} type="button" aria-pressed={goal === key} onClick={() => setGoal(key)} className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${goal === key ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300' : 'border-gray-800 bg-gray-950 text-gray-400 hover:border-gray-700'}`}>{item.label}</button>)}
+              </div>
+            </fieldset>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs text-gray-500 uppercase border-b border-gray-800">
-                <tr>
-                  <th className="pb-3 font-semibold">Xếp hạng & Sản phẩm</th>
-                  <th className="pb-3 font-semibold">Giá niêm yết</th>
-                  <th className="pb-3 font-semibold">Chi phí / gram</th>
-                  <th className="pb-3 font-semibold text-right">Hành động</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800/80">
-                {currentProducts.map((p, idx) => (
-                  <tr key={idx} className="hover:bg-gray-850/40 transition">
-                    <td className="py-4 pr-3">
-                      <div className="font-medium text-gray-200 flex items-center gap-2">
-                        <span>{p.name}</span>
-                      </div>
-                      <span className="inline-block mt-1 text-[10px] bg-gray-800 text-emerald-400 px-2 py-0.5 rounded-md font-medium border border-gray-700">
-                        {p.badge}
-                      </span>
-                    </td>
-                    <td className="py-4 text-gray-300 font-semibold whitespace-nowrap">
-                      {p.price.toLocaleString()}đ
-                    </td>
-                    <td className="py-4 whitespace-nowrap">
-                      <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
-                        {p.cost_per_gram}đ / g
-                      </span>
-                    </td>
-                    <td className="py-4 text-right whitespace-nowrap">
-                      <a 
-                        href={p.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2 rounded-xl font-semibold transition shadow-lg shadow-emerald-950/50"
-                      >
-                        Mua trên Shopee ↗
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <aside className="rounded-2xl border border-emerald-900/60 bg-gradient-to-b from-emerald-950/50 to-gray-900 p-5 sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Kết quả ước tính</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-gray-800/80 bg-gray-950/60 p-4"><p className="text-xs text-gray-500">BMR</p><p className="mt-1 text-xl font-black text-white">{formatNumber(metrics.bmr)}</p><p className="text-[11px] text-gray-600">kcal/ngày</p></div>
+              <div className="rounded-xl border border-gray-800/80 bg-gray-950/60 p-4"><p className="text-xs text-gray-500">TDEE</p><p className="mt-1 text-xl font-black text-white">{formatNumber(metrics.tdee)}</p><p className="text-[11px] text-gray-600">kcal/ngày</p></div>
+            </div>
+            <div className="mt-3 rounded-xl border border-emerald-800/60 bg-emerald-500/10 p-4"><p className="text-xs text-emerald-400">Mục tiêu {goals[goal].label.toLowerCase()}</p><p className="mt-1 text-3xl font-black text-white">{formatNumber(metrics.calorieTarget)}</p><p className="text-xs text-emerald-300/70">kcal mỗi ngày</p></div>
+            <div className="mt-5 space-y-2 text-sm text-gray-300"><p className="flex justify-between"><span>Protein</span><strong className="text-white">{metrics.proteinMin}–{metrics.proteinMax}g</strong></p><p className="flex justify-between"><span>Creatine</span><strong className="text-white">{metrics.creatine}g</strong></p></div>
+            <p className="mt-5 text-[11px] leading-5 text-gray-500">Ước tính theo công thức Mifflin–St Jeor. Đây là công cụ tham khảo, không thay thế tư vấn y tế hoặc dinh dưỡng chuyên môn.</p>
+          </aside>
+        </section>
+
+        <section className="space-y-5 rounded-2xl border border-gray-800 bg-gray-900 p-5 shadow-2xl sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">So sánh theo hoạt chất</p><h2 className="mt-1 text-xl font-bold text-white">Sản phẩm phù hợp nhu cầu</h2></div>
+            <label htmlFor="category" className="space-y-1.5 sm:min-w-64"><span className="block text-xs font-medium text-gray-400">Danh mục</span><select id="category" value={category} onChange={(event) => setCategory(event.target.value)} className="w-full rounded-xl border border-gray-800 bg-gray-950 p-3 text-sm font-semibold text-white outline-none focus:border-emerald-500"><option value="creatine">Creatine Monohydrate</option><option value="whey">Whey Protein Isolate</option></select></label>
           </div>
-          <p className="text-[11px] text-gray-500 text-center pt-2">
-            * Hệ thống tự động lọc và sắp xếp theo giá trị thực tế trên từng gram hoạt chất để bảo vệ quyền lợi người tiêu dùng.
-          </p>
-        </div>
-
-        {/* Footer */}
-        <footer className="text-center text-xs text-gray-600 py-4">
-          © 2026 Trạm Định lượng Thể hình. Vận hành bởi Hệ thống Tự động hóa Zero-Touch.
-        </footer>
-
+          <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-200">Khuyến nghị theo thể trạng: <strong className="text-white">{recommendation}</strong></div>
+          <div className="grid gap-3">
+            {products[category].map((product) => <article key={product.name} className="grid gap-4 rounded-xl border border-gray-800 bg-gray-950/50 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><h3 className="font-semibold text-gray-100">{product.name}</h3><span className="mt-1.5 inline-block rounded-md border border-gray-700 bg-gray-800 px-2 py-0.5 text-[10px] font-medium text-emerald-400">{product.badge}</span></div><div className="flex items-end justify-between gap-6 sm:block sm:text-right"><div><p className="text-xs text-gray-500">Giá niêm yết</p><p className="font-bold text-gray-200">{formatNumber(product.price)}đ</p></div><p className="text-xs font-semibold text-emerald-400">{formatNumber(product.costPerGram)}đ / g</p></div><a href={product.url} target="_blank" rel="noopener noreferrer sponsored" className="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400">Xem trên Shopee ↗</a></article>)}
+          </div>
+          <p className="text-center text-[11px] text-gray-600">Giá và liên kết hiện là dữ liệu mẫu phục vụ phát triển. Hãy kiểm tra giá tại nơi bán trước khi mua.</p>
+        </section>
+        <footer className="pb-4 text-center text-xs text-gray-600">© 2026 Trạm Định lượng Thể hình</footer>
       </div>
     </main>
   );
