@@ -1,16 +1,5 @@
 import { useMemo, useState } from 'react';
-
-const products = {
-  creatine: [
-    { name: 'Ostrovit Micronized Creatine 500g', price: 450000, costPerGram: 900, badge: '🥇 Rẻ nhất', url: 'https://s.shopee.vn/sub_id=creatine_ostrovit' },
-    { name: 'Rule 1 Creatine Monohydrate 435g', price: 520000, costPerGram: 1195, badge: '🥈 Bán chạy', url: 'https://s.shopee.vn/sub_id=creatine_rule1' },
-    { name: 'NutraBio Pure Creatine 300g', price: 410000, costPerGram: 1366, badge: '🥉 Cao cấp', url: 'https://s.shopee.vn/sub_id=creatine_nutrabio' },
-  ],
-  whey: [
-    { name: 'Whey Protein Isolate Avacore 2kg', price: 1650000, costPerGram: 925, badge: '🥇 Tối ưu nhất', url: 'https://s.shopee.vn/sub_id=whey_avacore' },
-    { name: 'Rule 1 Proteins Isolate 5lbs', price: 1850000, costPerGram: 961, badge: '🥈 Phổ biến', url: 'https://s.shopee.vn/sub_id=whey_rule1' },
-  ],
-};
+import { useProducts } from './src/hooks/useProducts';
 
 const activityLevels = [
   { value: 1.2, label: 'Ít vận động' },
@@ -48,6 +37,7 @@ export default function FitnessAffiliateHub() {
   const [activity, setActivity] = useState('1.55');
   const [goal, setGoal] = useState('maintain');
   const [category, setCategory] = useState('creatine');
+  const { products, source, loading } = useProducts(category);
 
   const metrics = useMemo(() => {
     const safeWeight = Math.min(300, Math.max(30, Number(weight) || 0));
@@ -122,12 +112,12 @@ export default function FitnessAffiliateHub() {
 
         <section className="space-y-5 rounded-2xl border border-gray-800 bg-gray-900 p-5 shadow-2xl sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">So sánh theo hoạt chất</p><h2 className="mt-1 text-xl font-bold text-white">Sản phẩm phù hợp nhu cầu</h2></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">So sánh theo hoạt chất</p><h2 className="mt-1 text-xl font-bold text-white">Sản phẩm phù hợp nhu cầu</h2><p className="mt-1 text-xs text-gray-500">{loading ? 'Đang đồng bộ dữ liệu…' : source === 'supabase' ? 'Dữ liệu đã đồng bộ từ Supabase' : 'Đang dùng bộ dữ liệu mẫu 30 sản phẩm'}</p></div>
             <label htmlFor="category" className="space-y-1.5 sm:min-w-64"><span className="block text-xs font-medium text-gray-400">Danh mục</span><select id="category" value={category} onChange={(event) => setCategory(event.target.value)} className="w-full rounded-xl border border-gray-800 bg-gray-950 p-3 text-sm font-semibold text-white outline-none focus:border-emerald-500"><option value="creatine">Creatine Monohydrate</option><option value="whey">Whey Protein Isolate</option></select></label>
           </div>
           <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-200">Khuyến nghị theo thể trạng: <strong className="text-white">{recommendation}</strong></div>
           <div className="grid gap-3">
-            {products[category].map((product) => <article key={product.name} className="grid gap-4 rounded-xl border border-gray-800 bg-gray-950/50 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><h3 className="font-semibold text-gray-100">{product.name}</h3><span className="mt-1.5 inline-block rounded-md border border-gray-700 bg-gray-800 px-2 py-0.5 text-[10px] font-medium text-emerald-400">{product.badge}</span></div><div className="flex items-end justify-between gap-6 sm:block sm:text-right"><div><p className="text-xs text-gray-500">Giá niêm yết</p><p className="font-bold text-gray-200">{formatNumber(product.price)}đ</p></div><p className="text-xs font-semibold text-emerald-400">{formatNumber(product.costPerGram)}đ / g</p></div><a href={product.url} target="_blank" rel="noopener noreferrer sponsored" className="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400">Xem trên Shopee ↗</a></article>)}
+            {products.map((product) => <article key={product.slug} className="grid gap-4 rounded-xl border border-gray-800 bg-gray-950/50 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><h3 className="font-semibold text-gray-100">{product.name}</h3><p className="mt-0.5 text-xs text-gray-500">{product.brand}</p><span className="mt-1.5 inline-block rounded-md border border-gray-700 bg-gray-800 px-2 py-0.5 text-[10px] font-medium text-emerald-400">{product.badge}</span></div><div className="flex items-end justify-between gap-6 sm:block sm:text-right"><div><p className="text-xs text-gray-500">Giá niêm yết</p><p className="font-bold text-gray-200">{formatNumber(product.price)}đ</p></div><p className="text-xs font-semibold text-emerald-400">{formatNumber(product.costPerGram)}đ / g</p></div><a href={product.url} target="_blank" rel="noopener noreferrer sponsored" className="inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400">Xem trên Shopee ↗</a></article>)}
           </div>
           <p className="text-center text-[11px] text-gray-600">Giá và liên kết hiện là dữ liệu mẫu phục vụ phát triển. Hãy kiểm tra giá tại nơi bán trước khi mua.</p>
         </section>

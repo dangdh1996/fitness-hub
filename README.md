@@ -21,4 +21,18 @@ repository. `vercel.json` khai báo framework Vite, lệnh cài `npm ci`, lệnh
 `npm run build` và Output Directory `dist`. Không cần biến môi trường cho dữ liệu
 mẫu hiện tại. Mỗi lần đẩy thay đổi lên nhánh production, Vercel sẽ triển khai lại.
 
-Dữ liệu sản phẩm và đường dẫn affiliate hiện là dữ liệu mẫu; chưa tích hợp Supabase.
+Dữ liệu và đường dẫn affiliate trong `src/data/fallbackProducts.js` là dữ liệu mẫu.
+Frontend đã sẵn sàng đọc dữ liệu thật từ Supabase khi có cấu hình.
+
+## Supabase
+
+1. Tạo một project Supabase.
+2. Chạy `supabase/migrations/202610300001_create_products.sql` trong SQL Editor.
+3. Chạy `supabase/seed.sql` để nạp 30 bản ghi mẫu.
+4. Sao chép `.env.example` thành `.env.local`, sau đó điền Project URL và public anon key.
+5. Trên Vercel, thêm cùng hai biến `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY`, rồi redeploy.
+
+Website chỉ được cấp quyền đọc các sản phẩm đang hoạt động qua Row Level Security.
+Các thao tác ghi dữ liệu phải chạy ở backend hoặc GitHub Actions bằng service-role secret;
+không đưa service-role key vào biến `VITE_*` hay mã frontend. Nếu chưa cấu hình Supabase,
+website tự dùng bộ dữ liệu mẫu 30 sản phẩm để luôn hoạt động.
